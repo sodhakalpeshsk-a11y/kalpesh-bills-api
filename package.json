@@ -1,12 +1,15 @@
 {
   "name": "kalpesh-bills-api",
   "version": "1.0.0",
+  "description": "API for Kalpesh Bill Software",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "mongoose": "^8.0.3"
+    "mongoose": "^8.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
   }
 }
