@@ -77,3 +77,26 @@ app.get('/api/dairy/records', async (req, res) => {
         res.status(500).json({ error: 'Server Error: ' + err.message });
     }
 });
+app.delete('/api/dairy/records', async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
+
+        const { subDealer } = req.query; // URL માંથી ?subDealer=001 પકડશે
+
+        if (!subDealer) {
+            return res.status(400).json({ error: 'subDealer કોડ જરૂરી છે. આખો ડેટા ન ઉડાડાય.' });
+        }
+
+        const result = await db.collection('dairy_records').deleteMany({ 
+            subDealer: subDealer  // જે બ્રાન્ચનો કોડ આવે એ બધા રેકોર્ડ ડિલીટ કરો
+        });
+
+        res.json({ 
+            success: true, 
+            message: `${subDealer} બ્રાન્ચના ${result.deletedCount} રેકોર્ડ ડિલીટ થયા` 
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: 'Server Error: ' + err.message });
+    }
+});
