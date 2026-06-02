@@ -79,5 +79,7 @@ app.get('/api/dairy/all', async (req, res) => {
     const records = await db.collection('dairy_records').find({}).limit(100).toArray();
     res.json(records);
 });
-
+app.get('/', (req, res) => {
+    res.send('Kalpesh Dairy API is running ✅');
+});
 app.listen(3000, () => console.log('Server ચાલુ છે http://localhost:3000'));
