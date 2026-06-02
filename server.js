@@ -77,26 +77,24 @@ app.get('/api/dairy/records', async (req, res) => {
         res.status(500).json({ error: 'Server Error: ' + err.message });
     }
 });
-app.delete('/api/dairy/records', async (req, res) => {
+app.post('/api/dairy/upload', async (req, res) => {
     try {
-        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
+        const { subDealer, data } = req.body; // <-- VB6 માંથી subDealer પણ મોકલો
 
-        const { subDealer } = req.query; // URL માંથી ?subDealer=001 પકડશે
+        if (!subDealer) return res.status(400).json({ error: 'subDealer જરૂરી છે' });
 
-        if (!subDealer) {
-            return res.status(400).json({ error: 'subDealer કોડ જરૂરી છે. આખો ડેટા ન ઉડાડાય.' });
-        }
+        // ડેટામાં subDealer ઉમેરીને સેવ કરો
+        const recordsToInsert = data.map(item => ({
+            ...item,
+            subDealer: subDealer,  // <-- આ લાઈન મહત્વની
+            uploadedAt: new Date()
+        }));
 
-        const result = await db.collection('dairy_records').deleteMany({ 
-            subDealer: subDealer  // જે બ્રાન્ચનો કોડ આવે એ બધા રેકોર્ડ ડિલીટ કરો
-        });
-
-        res.json({ 
-            success: true, 
-            message: `${subDealer} બ્રાન્ચના ${result.deletedCount} રેકોર્ડ ડિલીટ થયા` 
-        });
+        const result = await db.collection('dairy_records').insertMany(recordsToInsert);
+        
+        res.json({ success: true, inserted: result.insertedCount });
 
     } catch (err) {
-        res.status(500).json({ error: 'Server Error: ' + err.message });
+        res.status(500).json({ error: err.message });
     }
 });
