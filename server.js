@@ -93,3 +93,20 @@ app.delete('/api/dairy/records', async (req, res) => {
         res.status(500).json({ error: 'Server Error: ' + err.message });
     }
 });
+app.get('/api/dairy/records', async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
+
+        // બધો ડેટા લાવો, સબ ડીલર વગર
+        const records = await db.collection('dairy_records').find({}).toArray();
+
+        res.json({ 
+            success: true, 
+            count: records.length,
+            data: records 
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: 'Server Error: ' + err.message });
+    }
+});
