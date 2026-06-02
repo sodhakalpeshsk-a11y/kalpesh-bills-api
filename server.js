@@ -77,24 +77,19 @@ app.get('/api/dairy/records', async (req, res) => {
         res.status(500).json({ error: 'Server Error: ' + err.message });
     }
 });
-app.post('/api/dairy/upload', async (req, res) => {
+app.delete('/api/dairy/records', async (req, res) => {
     try {
-        const { subDealer, data } = req.body; // <-- VB6 માંથી subDealer પણ મોકલો
+        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
 
-        if (!subDealer) return res.status(400).json({ error: 'subDealer જરૂરી છે' });
+        // સબ ડીલરની જરૂર નથી, આખું કલેક્શન ખાલી કરો
+        const result = await db.collection('dairy_records').deleteMany({}); 
 
-        // ડેટામાં subDealer ઉમેરીને સેવ કરો
-        const recordsToInsert = data.map(item => ({
-            ...item,
-            subDealer: subDealer,  // <-- આ લાઈન મહત્વની
-            uploadedAt: new Date()
-        }));
-
-        const result = await db.collection('dairy_records').insertMany(recordsToInsert);
-        
-        res.json({ success: true, inserted: result.insertedCount });
+        res.json({ 
+            success: true, 
+            message: `All ${result.deletedCount} records deleted` 
+        });
 
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: 'Server Error: ' + err.message });
     }
 });
