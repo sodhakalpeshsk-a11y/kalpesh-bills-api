@@ -4,29 +4,28 @@ const app = express();
 
 app.use(express.json({ limit: '50mb' }));
 
-const MONGO_URL = process.env.MONGO_URL; // Render માંથી લિંક લેશે
+const MONGO_URL = process.env.MONGO_URL;
 const DB_NAME = 'dairy_db';
 let db;
 
-// પહેલા MongoDB કનેક્ટ કરો, પછી સર્વર ચાલુ કરો
 MongoClient.connect(MONGO_URL).then(client => {
-    console.log('MongoDB Connected to dairy_db'); // આ લાઈન Logs માં દેખાવી જોઈએ
+    console.log('MongoDB Connected to dairy_db');
     db = client.db(DB_NAME);
     
-    // DB કનેક્ટ થયા પછી જ સર્વર ચાલુ કરો
     app.listen(3000, () => {
         console.log('Server ચાલુ છે');
     });
 
 }).catch(err => {
     console.error('MongoDB Connection Error:', err);
-    process.exit(1); // એરર આવે તો સર્વર બંધ કરી દો
+    process.exit(1);
 });
 
 app.get('/', (req, res) => {
     res.send('Kalpesh Dairy API Live ✅');
 });
 
+// ડેટા અપલોડ કરવા માટે
 app.post('/api/dairy/upload', async (req, res) => {
     try {
         if (!db) return res.status(503).json({ error: 'DB not connected yet' });
@@ -52,7 +51,17 @@ app.post('/api/dairy/upload', async (req, res) => {
             pmtamt: parseFloat(item.pmtamt),
             uploadedAt: new Date()
         }));
-        app.get('/api/dairy/records', async (req, res) => {
+        
+        const result = await db.collection('dairy_records').insertMany(dataToInsert);
+        res.json({ success: true, message: `${result.insertedCount} રેકોર્ડ સેવ થયા` });
+        
+    } catch (err) {
+        res.status(500).json({ error: 'Server Error: ' + err.message });
+    }
+});
+
+// ડેટા જોવા માટે - આ નવું ઉમેર્યું છે
+app.get('/api/dairy/records', async (req, res) => {
     try {
         if (!db) return res.status(503).json({ error: 'DB not connected yet' });
         
@@ -61,8 +70,8 @@ app.post('/api/dairy/upload', async (req, res) => {
             .sort({ uploadedAt: -1 })
             .limit(100)
             .toArray();
-        const result = await db.collection('dairy_records').insertMany(dataToInsert);
-        res.json({ success: true, message: `${result.insertedCount} રેકોર્ડ સેવ થયા` });
+            
+        res.json({ success: true, count: records.length, data: records });
         
     } catch (err) {
         res.status(500).json({ error: 'Server Error: ' + err.message });
