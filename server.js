@@ -4,37 +4,38 @@ const app = express();
 
 app.use(express.json({ limit: '50mb' }));
 
-const MONGO_URL = 'mongodb://localhost:27017'; // Render પર આ બદલાશે
+const MONGO_URL = process.env.MONGO_URL; // Render માંથી લિંક લેશે
 const DB_NAME = 'dairy_db';
 let db;
 
+// પહેલા MongoDB કનેક્ટ કરો, પછી સર્વર ચાલુ કરો
 MongoClient.connect(MONGO_URL).then(client => {
-    console.log('MongoDB Connected Successfully');
+    console.log('MongoDB Connected to dairy_db'); // આ લાઈન Logs માં દેખાવી જોઈએ
     db = client.db(DB_NAME);
-}).catch(err => console.error('MongoDB Error:', err));
+    
+    // DB કનેક્ટ થયા પછી જ સર્વર ચાલુ કરો
+    app.listen(3000, () => {
+        console.log('Server ચાલુ છે');
+    });
 
-// ✅ રૂટ 1: હોમ પેજ
+}).catch(err => {
+    console.error('MongoDB Connection Error:', err);
+    process.exit(1); // એરર આવે તો સર્વર બંધ કરી દો
+});
+
 app.get('/', (req, res) => {
     res.send('Kalpesh Dairy API Live ✅');
 });
 
-// ✅ રૂટ 2: બધા બિલ જોવા - આ જ મિસિંગ હતો
-app.get('/api/bills', async (req, res) => {
-    try {
-        const records = await db.collection('dairy_records').find({}).limit(100).toArray();
-        res.json(records);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ✅ રૂટ 3: VB6 માંથી ડેટા અપલોડ
 app.post('/api/dairy/upload', async (req, res) => {
     try {
+        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
+        
         const dairyData = req.body;
         if (!Array.isArray(dairyData) || dairyData.length === 0) {
             return res.status(400).json({ error: 'ડેટા ખાલી છે' });
         }
+        
         const dataToInsert = dairyData.map(item => ({
             currdate: new Date(item.currdate),
             srNo: item.srNo,
@@ -51,11 +52,11 @@ app.post('/api/dairy/upload', async (req, res) => {
             pmtamt: parseFloat(item.pmtamt),
             uploadedAt: new Date()
         }));
+        
         const result = await db.collection('dairy_records').insertMany(dataToInsert);
         res.json({ success: true, message: `${result.insertedCount} રેકોર્ડ સેવ થયા` });
+        
     } catch (err) {
         res.status(500).json({ error: 'Server Error: ' + err.message });
     }
 });
-
-app.listen(3000, () => console.log('Server ચાલુ છે http://localhost:3000'));
