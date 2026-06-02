@@ -52,7 +52,15 @@ app.post('/api/dairy/upload', async (req, res) => {
             pmtamt: parseFloat(item.pmtamt),
             uploadedAt: new Date()
         }));
+        app.get('/api/dairy/records', async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
         
+        const records = await db.collection('dairy_records')
+            .find({})
+            .sort({ uploadedAt: -1 })
+            .limit(100)
+            .toArray();
         const result = await db.collection('dairy_records').insertMany(dataToInsert);
         res.json({ success: true, message: `${result.insertedCount} રેકોર્ડ સેવ થયા` });
         
