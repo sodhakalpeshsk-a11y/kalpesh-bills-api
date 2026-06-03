@@ -5,67 +5,41 @@ const app = express();
 
 app.use(express.json({ limit: '10mb' }));
 
-// ==================================
-//.mdb જેવો ડેટા.Txt માં સેવ કરવાનો રૂટ
-// ==================================
 app.post('/api/dairy/upload', (req, res) => {
     try {
         const records = req.body;
-        if (!Array.isArray(records) || records.length === 0) {
+        if (!records || records.length === 0) {
             return res.status(400).send('ડેટા ખાલી છે');
         }
 
-        // પહેલા રેકોર્ડમાંથી વિગત કાઢો
-        const vendorCode = records[0].vendorCode || '000';
-        const currdate = records[0].currdate; // '2026-06-03'
-        const session = records[0].session1 || 'M'; // M અથવા E
+        // ફોલ્ડર માટે 001 ફોર્મેટ: 1 → "001", 12 → "012", 101 → "101"
+        const folderName = String(records[0].vendorCode).padStart(3, '0');
 
-        // તારીખ: 2026-06-03 → 03062026
-        const dateParts = currdate.split('-');
-        const fileDate = dateParts[2] + dateParts[1] + dateParts[0];
+        const currdate = records[0].currdate;
+        const session = records[0].session1 || 'M';
 
-        // ફાઈલનું નામ: 03062026M.Txt
+        // 2026-06-03 → 03062026
+        const fileDate = currdate.split('-').reverse().join('');
         const filename = fileDate + session + '.Txt';
 
-        // ફોલ્ડર: dairy_data/001/
-        const dir = path.join(__dirname, 'dairy_data', vendorCode);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
+        // ફોલ્ડર: Dairy-data/001/
+        const dir = path.join(__dirname, 'Dairy-data', folderName);
+        fs.mkdirSync(dir, { recursive: true });
 
-        //.Txt ફાઈલનો કન્ટેન્ટ બનાવો - MDB જેવો જ ઓર્ડર
+        // ફાઈલની અંદર: vendorCode એમ ને એમ.mdb વાળો જ
         let fileContent = '';
         records.forEach(rec => {
-            // તમારા ફોટા વાળા ઓર્ડર પ્રમાણે: Currdate,SrNo,VendorCode,Type,Fat,Ltr,Amount,CurrTime,Session1,Rate,prv_prc,jama_prc,pmtamt
             fileContent += `${rec.currdate},${rec.srNo},${rec.vendorCode},${rec.type},${rec.fat},${rec.ltr},${rec.amount},${rec.currTime},${rec.session1},${rec.rate},${rec.prv_prc},${rec.jama_prc},${rec.pmtamt}\n`;
         });
 
-        const filepath = path.join(dir, filename);
-        fs.writeFileSync(filepath, fileContent, 'utf8');
-
-        res.send(`ફાઈલ સેવ થઈ: ${vendorCode}/${filename} - ${records.length} રેકોર્ડ`);
+        fs.writeFileSync(path.join(dir, filename), fileContent, 'utf8');
+        res.send(`સેવ થયું: Dairy-data/${folderName}/${filename}`);
 
     } catch (err) {
-        console.error("Save Error:", err);
-        res.status(500).send('ફાઈલ સેવ કરવામાં એરર: ' + err.message);
+        res.status(500).send('એરર: ' + err.message);
     }
 });
 
-// ડાઉનલોડ રૂટ
-app.get('/download/dairy_data/:vendor/:file', (req, res) => {
-    const filepath = path.join(__dirname, 'dairy_data', req.params.vendor, req.params.file);
-    if (fs.existsSync(filepath)) {
-        res.download(filepath);
-    } else {
-        res.status(404).send('ફાઈલ મળી નથી');
-    }
-});
-
-app.get('/', (req, res) => {
-    res.send('Kalpesh Dairy API Live ✅.Txt ફાઈલ સેવ સિસ્ટમ');
-});
-
+app.get('/', (req, res) => res.send('API Live ✅'));
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server ચાલુ છે Port: ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Port: ${PORT}`));
