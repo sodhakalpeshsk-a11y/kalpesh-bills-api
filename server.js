@@ -1,16 +1,40 @@
-const express = require('express');
-const { MongoClient } = require('mongodb');
-const app = express();
 
-app.use(express.json({ limit: '50mb' }));
-
-const MONGO_URL = process.env.MONGO_URL;
-const DB_NAME = 'dairy_db';
-let db;
-
-MongoClient.connect(MONGO_URL).then(client => {
-    console.log('MongoDB Connected to dairy_db');
-    db = client.db(DB_NAME);
+const fs = require('fs');
+const path = require('path');
+// કસ્ટમ ફોલ્ડરમાં ડેટા સેવ કરવા માટેનો નવો રૂટ
+app.post('/save-data', (req, res) => {
+    try {
+        const { folder, mobile, fat, ltr, amount } = req.body;
+        
+        if (!folder) {
+            return res.status(400).send('Folder name required');
+        }
+        
+        const dir = path.join(__dirname, folder);
+        
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+            console.log(folder + ' ફોલ્ડર બનાવ્યું');
+        }
+        
+        const d = new Date();
+        const filename = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.txt`;
+        const filepath = path.join(dir, filename);
+        
+        const data = `${d.toLocaleTimeString('en-IN')},${mobile},${fat},${ltr},${amount}\n`;
+        
+        if (!fs.existsSync(filepath)) {
+            fs.appendFileSync(filepath, `Time,Mobile,Fat,Liter,Amount\n`);
+        }
+        
+        fs.appendFileSync(filepath, data);
+        res.send('SUCCESS');
+        
+    } catch (err) {
+        console.log("Save Error:", err);
+        res.status(500).send('ERROR');
+    }
+});
     
     app.listen(3000, () => {
         console.log('Server ચાલુ છે');
