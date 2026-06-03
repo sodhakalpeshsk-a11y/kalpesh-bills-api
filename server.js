@@ -21,67 +21,61 @@ app.use(express.json());
 app.post('/api/dairy/upload', async (req, res) => {
     // તમારો એક્સલ વાળો જૂનો કોડ અહીં પેસ્ટ કરો
 
-    res.send('Upload API Working');
-});
+   const records = req.body;
+        if (!Array.isArray(records) || records.length === 0) {
+            return res.status(400).send('ડેટા ખાલી છે');
+        }
 
-// ==================================
-// 2. નવા ફોલ્ડર વાળા રૂટ
-// ==================================
-app.post('/save-data', (req, res) => {
-    try {
-        const { folder, mobile, fat, ltr, amount } = req.body;
-        if (!folder) return res.status(400).send('Folder name required');
+        // પહેલા રેકોર્ડમાંથી વિગત કાઢો
+        const vendorCode = records[0].vendorCode || '000';
+        const currdate = records[0].currdate; // '2026-06-03'
+        const session = records[0].session1 || 'M'; // M અથવા E
 
-        const dir = path.join(__dirname, folder);
+        // તારીખ: 2026-06-03 → 03062026
+        const dateParts = currdate.split('-');
+        const fileDate = dateParts[2] + dateParts[1] + dateParts[0];
+
+        // ફાઈલનું નામ: 03062026M.Txt
+        const filename = fileDate + session + '.Txt';
+
+        // ફોલ્ડર: dairy_data/001/
+        const dir = path.join(__dirname, 'dairy_data', vendorCode);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        const date = new Date().toISOString().slice(0, 10);
-        const filepath = path.join(dir, date + '.txt');
-        const data = `Mobile: ${mobile}, Fat: ${fat}, Ltr: ${ltr}, Amount: ${amount}\n`;
+        //.Txt ફાઈલનો કન્ટેન્ટ બનાવો - MDB જેવો જ ઓર્ડર
+        let fileContent = '';
+        records.forEach(rec => {
+            // તમારા ફોટા વાળા ઓર્ડર પ્રમાણે: Currdate,SrNo,VendorCode,Type,Fat,Ltr,Amount,CurrTime,Session1,Rate,prv_prc,jama_prc,pmtamt
+            fileContent += `${rec.currdate},${rec.srNo},${rec.vendorCode},${rec.type},${rec.fat},${rec.ltr},${rec.amount},${rec.currTime},${rec.session1},${rec.rate},${rec.prv_prc},${rec.jama_prc},${rec.pmtamt}\n`;
+        });
 
-        fs.appendFileSync(filepath, data);
-        res.send('Saved successfully');
+        const filepath = path.join(dir, filename);
+        fs.writeFileSync(filepath, fileContent, 'utf8');
+
+        res.send(`ફાઈલ સેવ થઈ: ${vendorCode}/${filename} - ${records.length} રેકોર્ડ`);
+
     } catch (err) {
-        res.status(500).send(err.message);
+        console.error("Save Error:", err);
+        res.status(500).send('ફાઈલ સેવ કરવામાં એરર: ' + err.message);
     }
 });
 
-app.get('/list-data', (req, res) => {
-    try {
-        const folders = fs.readdirSync(__dirname).filter(f => {
-            return fs.statSync(path.join(__dirname, f)).isDirectory() &&!isNaN(f);
-        });
-
-        let result = {};
-        folders.forEach(folder => {
-            const files = fs.readdirSync(path.join(__dirname, folder));
-            result[folder] = files;
-        });
-
-        res.json(result);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/download/:folder/:file', (req, res) => {
-    try {
-        const filepath = path.join(__dirname, req.params.folder, req.params.file);
-        if (fs.existsSync(filepath)) {
-            res.download(filepath);
-        } else {
-            res.status(404).send('File not found');
-        }
-    } catch (err) {
-        res.status(500).send(err.message);
+// ડાઉનલોડ રૂટ
+app.get('/download/dairy_data/:vendor/:file', (req, res) => {
+    const filepath = path.join(__dirname, 'dairy_data', req.params.vendor, req.params.file);
+    if (fs.existsSync(filepath)) {
+        res.download(filepath);
+    } else {
+        res.status(404).send('ફાઈલ મળી નથી');
     }
 });
 
 app.get('/', (req, res) => {
-    res.send('Kalpesh Dairy API Live ✅');
+    res.send('Kalpesh Dairy API Live ✅.Txt ફાઈલ સેવ સિસ્ટમ');
 });
+
 app.post('/api/dairy/upload', async (req, res) => {
     try {
         if (!db) return res.status(503).json({ error: 'DB not connected yet' });
