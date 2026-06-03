@@ -39,7 +39,17 @@ app.post('/api/dairy/upload', (req, res) => {
         res.status(500).send('એરર: ' + err.message);
     }
 });
-
+app.get('/download/:folderCode/:filename', (req, res) => {
+    const folderCode = req.params.folderCode;
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, 'Dairy-data', folderCode, filename);
+    
+    if (fs.existsSync(filePath)) {
+        res.download(filePath); // ફાઈલ ડાઉનલોડ થશે
+    } else {
+        res.status(404).send('File not found: ' + filename);
+    }
+});
 app.get('/', (req, res) => res.send('API Live ✅'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Port: ${PORT}`));
