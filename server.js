@@ -1,70 +1,43 @@
 
 const fs = require('fs');
 const path = require('path');
-// કસ્ટમ ફોલ્ડરમાં ડેટા સેવ કરવા માટેનો નવો રૂટ
 app.post('/save-data', (req, res) => {
     try {
         const { folder, mobile, fat, ltr, amount } = req.body;
-        
-        if (!folder) {
-            return res.status(400).send('Folder name required');
-        }
-        
+        if (!folder) return res.status(400).send('Folder name required');
         const dir = path.join(__dirname, folder);
-        
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-            console.log(folder + ' ફોલ્ડર બનાવ્યું');
-        }
-        
-        const d = new Date();
-        const filename = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.txt`;
-        const filepath = path.join(dir, filename);
-        
-        const data = `${d.toLocaleTimeString('en-IN')},${mobile},${fat},${ltr},${amount}\n`;
-        
-        if (!fs.existsSync(filepath)) {
-            fs.appendFileSync(filepath, `Time,Mobile,Fat,Liter,Amount\n`);
-        }
-        
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        const date = new Date().toISOString().slice(0, 10);
+        const filepath = path.join(dir, date + '.txt');
+        const data = `Mobile: ${mobile}, Fat: ${fat}, Ltr: ${ltr}, Amount: ${amount}\n`;
         fs.appendFileSync(filepath, data);
-        res.send('SUCCESS');
-        
+        res.send('Saved successfully');
     } catch (err) {
-        console.log("Save Error:", err);
-        res.status(500).send('ERROR');
+        res.status(500).send(err.message);
     }
 });
-// બધા ફોલ્ડર અને ફાઈલ જોવા માટે
+
 app.get('/list-data', (req, res) => {
     try {
         const folders = fs.readdirSync(__dirname).filter(f => {
             return fs.statSync(path.join(__dirname, f)).isDirectory() &&!isNaN(f);
         });
-
         let result = {};
         folders.forEach(folder => {
-            const files = fs.readdirSync(path.join(__dirname, folder));
-            result[folder] = files;
+            result[folder] = fs.readdirSync(path.join(__dirname, folder));
         });
-
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// કોઈ એક ફાઈલ ડાઉનલોડ કરવા માટે
 app.get('/download/:folder/:file', (req, res) => {
-    try {
-        const filepath = path.join(__dirname, req.params.folder, req.params.file);
-        if (fs.existsSync(filepath)) {
-            res.download(filepath);
-        } else {
-            res.status(404).send('File not found');
-        }
-    } catch (err) {
-        res.status(500).send(err.message);
+    const filepath = path.join(__dirname, req.params.folder, req.params.file);
+    if (fs.existsSync(filepath)) {
+        res.download(filepath);
+    } else {
+        res.status(404).send('File not found');
     }
 });
     
