@@ -1,6 +1,32 @@
 
+const express = require('express');
 const fs = require('fs');
 const path = require('path');
+// const mongoose = require('mongoose'); // જો MongoDB ન વાપરતા હો તો // રહેવા દો
+const app = express();
+app.use(express.json());
+
+// ==================================
+// જો MongoDB વાપરતા હો તો આ કોમેન્ટ કાઢજો
+// ==================================
+// mongoose.connect('તમારી_MONGO_URL')
+//.then(() => console.log('MongoDB Connected'))
+//.catch(err => {
+// console.error('MongoDB Connection Error:', err);
+// process.exit(1);
+// });
+
+// ==================================
+// 1. તમારો જૂનો /api/dairy/upload વાળો રૂટ
+// ==================================
+app.post('/api/dairy/upload', async (req, res) => {
+    // તમારો એક્સલ વાળો જૂનો કોડ અહીં પેસ્ટ કરો
+    res.send('Upload API Working');
+});
+
+// ==================================
+// 2. નવા ફોલ્ડર વાળા રૂટ
+// ==================================
 app.post('/save-data', (req, res) => {
     try {
         const { folder, mobile, fat, ltr, amount } = req.body;
@@ -52,19 +78,11 @@ app.get('/download/:folder/:file', (req, res) => {
         res.status(500).send(err.message);
     }
 });
-    
-  
-
-}).catch(err => {
-    console.error('MongoDB Connection Error:', err);
-    process.exit(1);
-});
 
 app.get('/', (req, res) => {
     res.send('Kalpesh Dairy API Live ✅');
 });
-  app.listen(3000, () => {
-        console.log('Server ચાલુ છે');
+
     });
 // ડેટા અપલોડ કરવા માટે
 app.post('/api/dairy/upload', async (req, res) => {
@@ -150,4 +168,8 @@ app.get('/api/dairy/records', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: 'Server Error: ' + err.message });
     }
+});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server ચાલુ છે Port: ${PORT}`);
 });
