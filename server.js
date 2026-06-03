@@ -50,6 +50,21 @@ app.get('/download/:folderCode/:filename', (req, res) => {
         res.status(404).send('File not found: ' + filename);
     }
 });
+// ચોક્કસ તારીખ અને સેશનનો ડેટા આપશે
+app.get('/api/dairy/get/:folderCode/:date/:session', (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const { folderCode, date, session } = req.params; // date = DDMMYYYY, session = M or E
+    const filename = date + session + '.Txt';
+    const filePath = path.join(__dirname, 'Dairy-data', folderCode, filename);
+    
+    if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        res.type('json').send(content);
+    } else {
+        res.status(404).json({ error: 'File not found: ' + filename });
+    }
+});
 app.get('/', (req, res) => res.send('API Live ✅'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Port: ${PORT}`));
