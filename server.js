@@ -35,6 +35,38 @@ app.post('/save-data', (req, res) => {
         res.status(500).send('ERROR');
     }
 });
+// બધા ફોલ્ડર અને ફાઈલ જોવા માટે
+app.get('/list-data', (req, res) => {
+    try {
+        const folders = fs.readdirSync(__dirname).filter(f => {
+            return fs.statSync(path.join(__dirname, f)).isDirectory() &&!isNaN(f);
+        });
+
+        let result = {};
+        folders.forEach(folder => {
+            const files = fs.readdirSync(path.join(__dirname, folder));
+            result[folder] = files;
+        });
+
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// કોઈ એક ફાઈલ ડાઉનલોડ કરવા માટે
+app.get('/download/:folder/:file', (req, res) => {
+    try {
+        const filepath = path.join(__dirname, req.params.folder, req.params.file);
+        if (fs.existsSync(filepath)) {
+            res.download(filepath);
+        } else {
+            res.status(404).send('File not found');
+        }
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
     
     app.listen(3000, () => {
         console.log('Server ચાલુ છે');
