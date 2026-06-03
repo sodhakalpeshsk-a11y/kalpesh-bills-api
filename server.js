@@ -7,13 +7,13 @@ app.use(express.json({ limit: '10mb' }));
 
 app.post('/api/dairy/upload', (req, res) => {
     try {
-        const records = req.body;
-        if (!records || records.length === 0) {
+        // ફોલ્ડર કોડ અલગ લો, ડેટાના વેન્ડર કોડ સાથે લેવા-દેવા નથી
+        const folderCode = req.body.folderCode || '000';
+        const records = req.body.records; // ડેટા અલગ
+
+        if (!Array.isArray(records) || records.length === 0) {
             return res.status(400).send('ડેટા ખાલી છે');
         }
-
-        // ફોલ્ડર માટે 001 ફોર્મેટ: 1 → "001", 12 → "012", 101 → "101"
-        const folderName = String(records[0].vendorCode).padStart(3, '0');
 
         const currdate = records[0].currdate;
         const session = records[0].session1 || 'M';
@@ -22,18 +22,18 @@ app.post('/api/dairy/upload', (req, res) => {
         const fileDate = currdate.split('-').reverse().join('');
         const filename = fileDate + session + '.Txt';
 
-        // ફોલ્ડર: Dairy-data/001/
-        const dir = path.join(__dirname, 'Dairy-data', folderName);
+        // ફોલ્ડર: Dairy-data/001/ - આ folderCode થી બનશે
+        const dir = path.join(__dirname, 'Dairy-data', folderCode);
         fs.mkdirSync(dir, { recursive: true });
 
-        // ફાઈલની અંદર: vendorCode એમ ને એમ.mdb વાળો જ
+        // ફાઈલની અંદર: ડેટા એમ ને એમ, જે.mdb માં છે એ
         let fileContent = '';
         records.forEach(rec => {
             fileContent += `${rec.currdate},${rec.srNo},${rec.vendorCode},${rec.type},${rec.fat},${rec.ltr},${rec.amount},${rec.currTime},${rec.session1},${rec.rate},${rec.prv_prc},${rec.jama_prc},${rec.pmtamt}\n`;
         });
 
         fs.writeFileSync(path.join(dir, filename), fileContent, 'utf8');
-        res.send(`સેવ થયું: Dairy-data/${folderName}/${filename}`);
+        res.send(`સેવ થયું: Dairy-data/${folderCode}/${filename}`);
 
     } catch (err) {
         res.status(500).send('એરર: ' + err.message);
