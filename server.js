@@ -20,6 +20,30 @@ app.use(express.json());
 // ==================================
 app.post('/api/dairy/upload', async (req, res) => {
     // તમારો એક્સલ વાળો જૂનો કોડ અહીં પેસ્ટ કરો
+    const dairyData = req.body;
+
+        if (!dairyData || dairyData.length === 0) {
+            return res.status(400).send('No data received');
+        }
+
+        const firstRecord = dairyData[0];
+        const folder = firstRecord.vendorCode || '000';
+        const currDate = firstRecord.currdate;
+
+        const dir = path.join(__dirname, 'dairy_data', folder);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
+        const filepath = path.join(dir, currDate + '.json');
+        fs.writeFileSync(filepath, JSON.stringify(dairyData, null, 2));
+
+        res.send('Vendor ' + folder + ' na ' + dairyData.length + ' records saved');
+
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
     res.send('Upload API Working');
 });
 
