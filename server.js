@@ -5,11 +5,16 @@ app.post('/save-data', (req, res) => {
     try {
         const { folder, mobile, fat, ltr, amount } = req.body;
         if (!folder) return res.status(400).send('Folder name required');
+
         const dir = path.join(__dirname, folder);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+
         const date = new Date().toISOString().slice(0, 10);
         const filepath = path.join(dir, date + '.txt');
         const data = `Mobile: ${mobile}, Fat: ${fat}, Ltr: ${ltr}, Amount: ${amount}\n`;
+
         fs.appendFileSync(filepath, data);
         res.send('Saved successfully');
     } catch (err) {
@@ -22,10 +27,13 @@ app.get('/list-data', (req, res) => {
         const folders = fs.readdirSync(__dirname).filter(f => {
             return fs.statSync(path.join(__dirname, f)).isDirectory() &&!isNaN(f);
         });
+
         let result = {};
         folders.forEach(folder => {
-            result[folder] = fs.readdirSync(path.join(__dirname, folder));
+            const files = fs.readdirSync(path.join(__dirname, folder));
+            result[folder] = files;
         });
+
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -33,17 +41,19 @@ app.get('/list-data', (req, res) => {
 });
 
 app.get('/download/:folder/:file', (req, res) => {
-    const filepath = path.join(__dirname, req.params.folder, req.params.file);
-    if (fs.existsSync(filepath)) {
-        res.download(filepath);
-    } else {
-        res.status(404).send('File not found');
+    try {
+        const filepath = path.join(__dirname, req.params.folder, req.params.file);
+        if (fs.existsSync(filepath)) {
+            res.download(filepath);
+        } else {
+            res.status(404).send('File not found');
+        }
+    } catch (err) {
+        res.status(500).send(err.message);
     }
 });
     
-    app.listen(3000, () => {
-        console.log('Server ચાલુ છે');
-    });
+  
 
 }).catch(err => {
     console.error('MongoDB Connection Error:', err);
@@ -53,7 +63,9 @@ app.get('/download/:folder/:file', (req, res) => {
 app.get('/', (req, res) => {
     res.send('Kalpesh Dairy API Live ✅');
 });
-
+  app.listen(3000, () => {
+        console.log('Server ચાલુ છે');
+    });
 // ડેટા અપલોડ કરવા માટે
 app.post('/api/dairy/upload', async (req, res) => {
     try {
