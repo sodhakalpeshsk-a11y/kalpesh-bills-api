@@ -1,0 +1,29 @@
+name: Build Windows EXE
+on: 
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build EXE with pkg
+        run: npx pkg . --targets node18-win-x64
+      
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: dairy-server-exe
+          path: dist/dairy-server.exe
