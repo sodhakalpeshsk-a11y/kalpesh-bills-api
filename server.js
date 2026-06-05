@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs');
+const multer = require('multer');
 const path = require('path');
 const app = express();
 
@@ -65,6 +66,41 @@ app.get('/api/dairy/get/:folderCode/:date/:session', (req, res) => {
         res.status(404).json({ error: 'File not found: ' + filename });
     }
 });
+// 1. ફાઈલ ક્યાં સેવ કરવી તે સેટિંગ
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const folderCode = req.body.folderCode || '001'; // VB6 માંથી 001 આવશે
+    const uploadPath = path.join(__dirname, 'Dairy-data', folderCode);
+    
+    // ફોલ્ડર ન હોય તો બનાવી દે
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath); // Dairy-data/001 માં સેવ થશે
+  },
+  filename: (req, file, cb) => {
+    // VB6 માંથી fileName આવે તો એ વાપર, નહીંતર ઓરિજિનલ નામ
+    const customName = req.body.fileName;
+    cb(null, customName || file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
+
+// 2. અપલોડ માટેનું API
+app.post('/api/dairy/upload', upload.array('files'), (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: 'ફાઈલ મળી નથી' });
+  }
+  
+  const savedFiles = req.files.map(f => f.filename);
+  res.json({ 
+    message: 'બધી ફાઈલ સેવ થઈ ગઈ ✅', 
+    folder: req.body.folderCode,
+    files: savedFiles 
+  });
+});
+
 app.get('/', (req, res) => res.send('API Live ✅'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Port: ${PORT}`));
