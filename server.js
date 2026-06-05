@@ -89,8 +89,12 @@ const upload = multer({ storage: storage });
 
 // 2. અપલોડ માટેનું API
 app.post('/api/dairy/upload', upload.array('files'), (req, res) => {
-     console.log('Body:', req.body);
-  console.log('Files:', req.files?.length);
+console.log('=== VB6 Request આવ્યો ===');
+  console.log('Body:', req.body);
+  console.log('Files:', req.files);
+  
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: 'No file uploaded' 
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'ફાઈલ મળી નથી' });
   }
