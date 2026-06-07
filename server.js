@@ -18,6 +18,23 @@ const storage = multer.diskStorage({
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
 });
 const upload = multer({ storage, limits: { fileSize: 500 * 1024 * 1024 } });
+// ફાઈલ ડાઉનલોડ કરવા માટે API
+app.get('/api/dairy/download', (req, res) => {
+    const filePath = path.join(__dirname, 'uploads', 'DairyDatabase.rar');
+    
+    // જો ફાઈલ ન હોય તો
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'ફાઈલ મળી નહીં સાહેબ' });
+    }
+    
+    // ડાઉનલોડ કરાવો
+    res.download(filePath, 'DairyDatabase.rar', (err) => {
+        if (err) {
+            console.log('Download Error:', err);
+            res.status(500).send('Download માં Error');
+        }
+    });
+});
 
 // તમારો જૂનો કોડ - એમ જ રહેવા દીધો
 app.post('/save-data', (req, res) => {
