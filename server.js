@@ -41,4 +41,31 @@ app.post('/api/dairy/rar', upload.single('file'), (req, res) => {
     }
 });
 
+
+// બધી ફાઈલનું લિસ્ટ જોવા માટે
+app.get('/api/dairy/list', (req, res) => {
+    try {
+        const files = fs.readdirSync(uploadDir);
+        if (files.length === 0) return res.send('હજુ કોઈ ફાઈલ નથી સાહેબ');
+        
+        let html = '<h2>સેવ થયેલી ફાઈલ</h2>';
+        files.reverse().forEach(f => {
+            html += `<p><a href="/uploads/${f}" target="_blank">${f}</a></p>`;
+        });
+        res.send(html);
+    } catch (e) {
+        res.send('Error: ' + e.message);
+    }
+});
+
+// ફાઈલ ડાઉનલોડ કરવા માટે
+app.get('/uploads/:filename', (req, res) => {
+    const filePath = path.join(uploadDir, req.params.filename);
+    if (fs.existsSync(filePath)) {
+        res.download(filePath); // ડાઉનલોડ થઈ જશે
+    } else {
+        res.send('ફાઈલ મળી નહીં - Render એ ઉડાડી દીધી હશે');
+    }
+});
+
 app.listen(port, () => console.log('Server ચાલુ'));
