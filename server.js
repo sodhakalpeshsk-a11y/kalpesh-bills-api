@@ -4,7 +4,8 @@ const multer = require('multer');
 const path = require('path');
 const app = express();
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({limit: '500mb'}));
+app.use(express.urlencoded({limit: '500mb', extended: true}));
 
 app.post('/api/dairy/upload', (req, res) => {
     try {
