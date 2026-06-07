@@ -1,113 +1,153 @@
-const express = require('express');
+
 const fs = require('fs');
-const multer = require('multer');
 const path = require('path');
-const app = express();
-
-app.use(express.json({limit: '100mb'}));
-app.use(express.urlencoded({limit: '100mb', extended: true}));
-
-app.post('/api/dairy/upload', (req, res) => {
+app.post('/save-data', (req, res) => {
     try {
-        // ફોલ્ડર કોડ અલગ લો, ડેટાના વેન્ડર કોડ સાથે લેવા-દેવા નથી
-        const folderCode = req.body.folderCode || '000';
-        const records = req.body.records; // ડેટા અલગ
+        const { folder, mobile, fat, ltr, amount } = req.body;
+        if (!folder) return res.status(400).send('Folder name required');
 
-        if (!Array.isArray(records) || records.length === 0) {
-            return res.status(400).send('ડેટા ખાલી છે');
+        const dir = path.join(__dirname, folder);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
         }
 
-        const currdate = records[0].currdate;
-        const session = records[0].session1 || 'M';
+        const date = new Date().toISOString().slice(0, 10);
+        const filepath = path.join(dir, date + '.txt');
+        const data = `Mobile: ${mobile}, Fat: ${fat}, Ltr: ${ltr}, Amount: ${amount}\n`;
 
-        // 2026-06-03 → 03062026
-        const fileDate = currdate.split('-').reverse().join('');
-        const filename = fileDate + session + '.Txt';
+        fs.appendFileSync(filepath, data);
+        res.send('Saved successfully');
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
 
-        // ફોલ્ડર: Dairy-data/001/ - આ folderCode થી બનશે
-        const dir = path.join(__dirname, 'Dairy-data', folderCode);
-        fs.mkdirSync(dir, { recursive: true });
-
-        // ફાઈલની અંદર: ડેટા એમ ને એમ, જે.mdb માં છે એ
-        let fileContent = '';
-        records.forEach(rec => {
-            fileContent += `${rec.currdate},${rec.srNo},${rec.vendorCode},${rec.type},${rec.fat},${rec.ltr},${rec.amount},${rec.currTime},${rec.session1},${rec.rate},${rec.prv_prc},${rec.jama_prc},${rec.pmtamt}\n`;
+app.get('/list-data', (req, res) => {
+    try {
+        const folders = fs.readdirSync(__dirname).filter(f => {
+            return fs.statSync(path.join(__dirname, f)).isDirectory() &&!isNaN(f);
         });
 
-        fs.writeFileSync(path.join(dir, filename), fileContent, 'utf8');
-        res.send(`સેવ થયું: Dairy-data/${folderCode}/${filename}`);
+        let result = {};
+        folders.forEach(folder => {
+            const files = fs.readdirSync(path.join(__dirname, folder));
+            result[folder] = files;
+        });
+
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/download/:folder/:file', (req, res) => {
+    try {
+        const filepath = path.join(__dirname, req.params.folder, req.params.file);
+        if (fs.existsSync(filepath)) {
+            res.download(filepath);
+        } else {
+            res.status(404).send('File not found');
+        }
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+    
+  
+
+}).catch(err => {
+    console.error('MongoDB Connection Error:', err);
+    process.exit(1);
+});
+
+app.get('/', (req, res) => {
+    res.send('Kalpesh Dairy API Live ✅');
+});
+  app.listen(3000, () => {
+        console.log('Server ચાલુ છે');
+    });
+// ડેટા અપલોડ કરવા માટે
+app.post('/api/dairy/upload', async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
+        
+        const dairyData = req.body;
+        if (!Array.isArray(dairyData) || dairyData.length === 0) {
+            return res.status(400).json({ error: 'ડેટા ખાલી છે' });
+        }
+        
+        const dataToInsert = dairyData.map(item => ({
+            currdate: new Date(item.currdate),
+            srNo: item.srNo,
+            vendorCode: item.vendorCode,
+            type: item.type,
+            fat: parseFloat(item.fat),
+            ltr: parseFloat(item.ltr),
+            amount: parseFloat(item.amount),
+            currTime: item.currTime,
+            session1: item.session1,
+            rate: parseFloat(item.rate),
+            prv_prc: parseFloat(item.prv_prc),
+            jama_prc: parseFloat(item.jama_prc),
+            pmtamt: parseFloat(item.pmtamt),
+            uploadedAt: new Date()
+        }));
+        
+        const result = await db.collection('dairy_records').insertMany(dataToInsert);
+        res.json({ success: true, message: `${result.insertedCount} રેકોર્ડ સેવ થયા` });
+        
+    } catch (err) {
+        res.status(500).json({ error: 'Server Error: ' + err.message });
+    }
+});
+
+// ડેટા જોવા માટે - આ નવું ઉમેર્યું છે
+app.get('/api/dairy/records', async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
+        
+        const records = await db.collection('dairy_records')
+            .find({})
+            .sort({ uploadedAt: -1 })
+            .limit(100)
+            .toArray();
+            
+        res.json({ success: true, count: records.length, data: records });
+        
+    } catch (err) {
+        res.status(500).json({ error: 'Server Error: ' + err.message });
+    }
+});
+app.delete('/api/dairy/records', async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
+
+        // સબ ડીલરની જરૂર નથી, આખું કલેક્શન ખાલી કરો
+        const result = await db.collection('dairy_records').deleteMany({}); 
+
+        res.json({ 
+            success: true, 
+            message: `All ${result.deletedCount} records deleted` 
+        });
 
     } catch (err) {
-        res.status(500).send('એરર: ' + err.message);
+        res.status(500).json({ error: 'Server Error: ' + err.message });
     }
 });
-app.get('/download/:folderCode/:filename', (req, res) => {
-    const folderCode = req.params.folderCode;
-    const filename = req.params.filename;
-    const filePath = path.join(__dirname, 'Dairy-data', folderCode, filename);
-    
-    if (fs.existsSync(filePath)) {
-        res.download(filePath); // ફાઈલ ડાઉનલોડ થશે
-    } else {
-        res.status(404).send('File not found: ' + filename);
-    }
-});
-// ચોક્કસ તારીખ અને સેશનનો ડેટા આપશે
-app.get('/api/dairy/get/:folderCode/:date/:session', (req, res) => {
-    const fs = require('fs');
-    const path = require('path');
-    const { folderCode, date, session } = req.params; // date = DDMMYYYY, session = M or E
-    const filename = date + session + '.Txt';
-    const filePath = path.join(__dirname, 'Dairy-data', folderCode, filename);
-    
-    if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf8');
-        res.type('json').send(content);
-    } else {
-        res.status(404).json({ error: 'File not found: ' + filename });
-    }
-});
-// 1. ફાઈલ ક્યાં સેવ કરવી તે સેટિંગ
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const folderCode = req.body.folderCode || '001'; // VB6 માંથી 001 આવશે
-    const uploadPath = path.join(__dirname, 'Dairy-data', folderCode);
-    
-    // ફોલ્ડર ન હોય તો બનાવી દે
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath); // Dairy-data/001 માં સેવ થશે
-  },
-  filename: (req, file, cb) => {
-    // VB6 માંથી fileName આવે તો એ વાપર, નહીંતર ઓરિજિનલ નામ
-    const customName = req.body.fileName;
-    cb(null, customName || file.originalname);
-  }
-});
+app.get('/api/dairy/records', async (req, res) => {
+    try {
+        if (!db) return res.status(503).json({ error: 'DB not connected yet' });
 
-const upload = multer({ storage: storage });
+        // બધો ડેટા લાવો, સબ ડીલર વગર
+        const records = await db.collection('dairy_records').find({}).toArray();
 
-// 2. અપલોડ માટેનું API
-app.post('/api/dairy/upload', upload.array('files'), (req, res) => {
-console.log('=== VB6 Request આવ્યો ===');
-  console.log('Body:', req.body);
-  console.log('Files:', req.files);
-  
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ message: 'No file uploaded' 
-  if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ error: 'ફાઈલ મળી નથી' });
-  }
-  
-  const savedFiles = req.files.map(f => f.filename);
-  res.json({ 
-    message: 'બધી ફાઈલ સેવ થઈ ગઈ ✅', 
-    folder: req.body.folderCode,
-    files: savedFiles 
-  });
+        res.json({ 
+            success: true, 
+            count: records.length,
+            data: records 
+        });
+
+    } catch (err) {
+        res.status(500).json({ error: 'Server Error: ' + err.message });
+    }
 });
-
-app.get('/', (req, res) => res.send('API Live ✅'));
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Port: ${PORT}`));
