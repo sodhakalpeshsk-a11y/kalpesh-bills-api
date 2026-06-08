@@ -37,6 +37,9 @@ app.get('/', (req, res) => {
   res.send("Dairy API ચાલુ છે");
 });
 
+
+// ફાઈલ ડાઉનલોડ માટે
+app.use('/backup', express.static(path.join(__dirname, 'backup')));
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
